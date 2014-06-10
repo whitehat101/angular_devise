@@ -125,6 +125,15 @@ devise.provider('Auth', function AuthProvider() {
             };
         }
 
+        function broadcastIf(name, withCredentials, oldID) {
+            return function(data) {
+                if (withCredentials && oldID !== _id) {
+                    return broadcast(name)(data);
+                }
+                return data;
+            };
+        }
+
         var service = {
             /**
              * The Auth service's current user.
@@ -153,20 +162,14 @@ devise.provider('Auth', function AuthProvider() {
              *                  rejected by the server.
              */
             login: function(creds) {
-                var withCredentials = arguments.length > 0,
-                    oldID = _id;
-                creds = creds || {};
+                var withCredentials = arguments.length > 0;
 
+                creds = creds || {};
                 return $http(httpConfig('login', {user: creds}))
                     .then(extractID)
                     .then(parse)
                     .then(save)
-                    .then(function(user) {
-                        if (withCredentials && oldID !== _id) {
-                            return broadcast('new-session')(user);
-                        }
-                        return user;
-                    })
+                    .then(broadcastIf('new-session', withCredentials, _id))
                     .then(broadcast('login'));
             },
 
