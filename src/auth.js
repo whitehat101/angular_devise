@@ -96,6 +96,14 @@ devise.provider('Auth', function AuthProvider() {
     }
 
     this.$get = function($q, $http, $rootScope) {
+        var _id;
+
+        // Store the UserID for new-session verification
+        function extractID(response) {
+            _id = response.data.id;
+            return response;
+        }
+
         // Our shared save function, called
         // by `then`s. Will return the first argument,
         // unless it is falsey (then it'll return
@@ -107,6 +115,7 @@ devise.provider('Auth', function AuthProvider() {
         // A reset that saves null for currentUser
         function reset() {
             save(null);
+            _id = null;
         }
 
         function broadcast(name) {
@@ -144,14 +153,16 @@ devise.provider('Auth', function AuthProvider() {
              *                  rejected by the server.
              */
             login: function(creds) {
-                var withCredentials = arguments.length > 0;
-                // var withCredentials = typeof creds != 'undefined';
+                var withCredentials = arguments.length > 0,
+                    oldID = _id;
                 creds = creds || {};
+
                 return $http(httpConfig('login', {user: creds}))
+                    .then(extractID)
                     .then(parse)
                     .then(save)
                     .then(function(user) {
-                        if (withCredentials) {
+                        if (withCredentials && oldID !== _id) {
                             return broadcast('new-session')(user);
                         }
                         return user;
