@@ -125,9 +125,9 @@ devise.provider('Auth', function AuthProvider() {
             };
         }
 
-        function broadcastIf(name, withCredentials, oldID) {
+        function broadcastIf(name, expression) {
             return function(data) {
-                if (withCredentials && oldID !== _id) {
+                if (expression()) {
                     return broadcast(name)(data);
                 }
                 return data;
@@ -162,14 +162,15 @@ devise.provider('Auth', function AuthProvider() {
              *                  rejected by the server.
              */
             login: function(creds) {
-                var withCredentials = arguments.length > 0;
+                var withCredentials = arguments.length > 0,
+                    oldID = _id;
 
                 creds = creds || {};
                 return $http(httpConfig('login', {user: creds}))
                     .then(extractID)
                     .then(parse)
                     .then(save)
-                    .then(broadcastIf('new-session', withCredentials, _id))
+                    .then(broadcastIf('new-session', function(){return withCredentials && oldID !== _id;}))
                     .then(broadcast('login'));
             },
 
